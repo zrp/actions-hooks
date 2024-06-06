@@ -5,4 +5,5 @@ set -e
 
 echo "Running pre-push hook"
 
+# If your project have the script of test, you can run it here
 yarn test

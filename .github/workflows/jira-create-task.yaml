@@ -1,0 +1,43 @@
+name: Create Jira Task from GitHub task issue
+
+on:
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  create-jira-task:
+    runs-on: ubuntu-latest
+    if: contains(github.event.comment.body, 'NIT TECDEBT')
+    steps:
+      - name: Login
+        uses: atlassian/gajira-login@v3
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+      
+      - name: Extract Name issue
+        id: extract
+        run: |
+          # Get the comment body
+          comment_body="${{ github.event.comment.body }}"
+          # Find the index of the specific string
+          index=$(echo "$comment_body" | grep -b -o 'NIT TECDEBT' | cut -d: -f1)
+          # Extract the information after the specific string
+          info=$(echo "${comment_body:$((index+12))}")
+
+          echo "::set-output name=info::$info"
+
+      - name: Create issue
+        id: create
+        uses: atlassian/gajira-create@v3
+        with:
+          issuetype: 'Task'
+          project: 'PROJECT_KEY' # This is the project set in your URL
+          summary: '[TECHNICAL DEBT] ${{ steps.extract.outputs.info }}'
+          description: 'GitHub PR: ${{ github.event.pull_request.html_url }}. Comment: ${{ github.event.comment.body }}'
+          fields: '{"customfield_10001": "YOUR TEAM ID"}' # This custom field could be another identifier
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
